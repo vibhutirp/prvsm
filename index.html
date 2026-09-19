@@ -64,6 +64,8 @@
   .world { position: absolute; left: 0; top: 0; width: 1060px; height: 745px; transform-origin: 0 0; }
   .world.fly { transition: transform 0.9s cubic-bezier(0.6, 0, 0.2, 1); }
   .world > svg { position: absolute; left: 0; top: 0; width: 1060px; height: 745px; overflow: visible; display: block; font-family: var(--sans); }
+  .wb-title { transition: opacity 0.3s; }
+  .world[data-view="global"] .wb-title { opacity: 0; }
   .frame { position: absolute; width: 1400px; cursor: zoom-in; }
   .frame.focus { cursor: auto; }
   .frame:not(.focus) * { pointer-events: none; }
@@ -214,8 +216,8 @@
   <div class="wordmark">Pr<span>VSM</span></div>
   <nav class="tabs" role="tablist" aria-label="Views">
     <button class="tab" role="tab" data-action="view" data-view="home">Office <kbd>0</kbd></button>
-    <button class="tab" role="tab" data-action="view" data-view="backend">Team Backend <kbd>1</kbd></button>
-    <button class="tab" role="tab" data-action="view" data-view="frontend">Team Frontend <span class="badge" id="fe-badge" hidden></span> <kbd>2</kbd></button>
+    <button class="tab" role="tab" data-action="view" data-view="electrical">Team Electrical <kbd>1</kbd></button>
+    <button class="tab" role="tab" data-action="view" data-view="mechanical">Team Mechanical <span class="badge" id="fe-badge" hidden></span> <kbd>2</kbd></button>
     <button class="tab" role="tab" data-action="view" data-view="global">Global <kbd>3</kbd></button>
   </nav>
   <div class="actions">
@@ -229,8 +231,8 @@
     <button class="btn" id="hud-back" data-action="view" data-view="home" hidden>← Back to office <kbd>0</kbd></button>
     <div class="hq-title">PRVSM HEADQUARTERS</div>
     <div class="roster">
-      <button class="presence" data-action="view" data-view="backend"><i></i>Priya <small>· Backend</small></button>
-      <button class="presence" data-action="view" data-view="frontend"><i></i>Sam <small>· Frontend</small></button>
+      <button class="presence" data-action="view" data-view="electrical"><i></i>Priya <small>· Electrical</small></button>
+      <button class="presence" data-action="view" data-view="mechanical"><i></i>Sam <small>· Mechanical</small></button>
       <button class="presence" data-action="view" data-view="global"><i></i>Translator</button>
     </div>
   </div></div>
@@ -240,10 +242,10 @@
 
 <script>
 /* ===================== Pure state logic (no DOM) ===================== */
-var SEED_TEXT = 'GET /orders returns { id, items[], total_cents, status }.';
-var CURRENCY_TEXT = 'GET /orders returns { id, items[], total_cents, currency, status }.';
-var CURRENCY_DIFF = 'Adds a currency field to every order; total_cents unchanged. Frontend must read currency instead of assuming USD.';
-var SRC_DEC_BE_002 = { label: 'Team Backend board · DEC-BE-002', view: 'backend', el: 'card-DEC-BE-002' };
+var SEED_TEXT = 'Pack is 300 × 120 × 90 mm, 48 V; frame mounts on the long axis.';
+var EDIT_TEXT = 'Pack is 340 × 120 × 90 mm, 48 V; frame mounts on the long axis.';
+var EDIT_DIFF = 'Pack grows 40 mm on the long axis for more range; voltage unchanged. Mechanical must recheck frame fit — current frame won’t fit the new pack.';
+var SRC_DEC_BE_002 = { label: 'Team Electrical board · DEC-EL-002', view: 'electrical', el: 'card-DEC-EL-002' };
 
 function artifact(id, type, team, affects, updated, state, source, title, text) {
   return { id: id, type: type, team: team, affects: affects, updated: updated, state: state,
@@ -252,25 +254,25 @@ function artifact(id, type, team, affects, updated, state, source, title, text) 
 
 function seedState() {
   return {
-    view: 'backend',
+    view: 'electrical',
     draft: SEED_TEXT,
     imported: false,
     whiteboard: [
-      artifact('INT-BE-001', 'interface', 'backend', ['frontend'], '2026-09-18T10:05:00Z', 'accepted', SRC_DEC_BE_002,
-        'Orders API response shape', SEED_TEXT),
-      artifact('DEC-BE-001', 'decision', 'backend', ['frontend', 'data'], '2026-09-18T10:05:00Z', 'accepted', SRC_DEC_BE_002,
-        'Money is integer cents everywhere', 'No floats cross a service boundary; display formatting is a client concern.')
+      artifact('INT-EL-001', 'interface', 'electrical', ['mechanical'], '2026-09-18T10:05:00Z', 'accepted', SRC_DEC_BE_002,
+        'Battery pack envelope', SEED_TEXT),
+      artifact('DEC-EL-001', 'decision', 'electrical', ['mechanical', 'firmware'], '2026-09-18T10:05:00Z', 'accepted', SRC_DEC_BE_002,
+        '48 V bus everywhere', 'Every powertrain component runs on the 48 V bus; no secondary high-voltage rails.')
     ],
     boards: {
-      backend: [
-        artifact('DEC-BE-002', 'decision', 'backend', [], '2026-09-18T09:40:00Z', 'accepted', { label: "chat: Priya's Claude chat, Sep 18" },
-          'Orders service owns pricing math', 'All money math happens server-side; clients receive integer cents only.'),
-        artifact('STA-BE-001', 'status', 'backend', [], '2026-09-18T16:20:00Z', 'accepted', SRC_DEC_BE_002,
-          'Orders API v1 deployed to staging', 'GET /orders live on staging; auth middleware still pending.')
+      electrical: [
+        artifact('DEC-EL-002', 'decision', 'electrical', [], '2026-09-18T09:40:00Z', 'accepted', { label: "chat: Priya's Claude chat, Sep 18" },
+          'Electrical owns the battery pack spec', 'Cells, pack dimensions and voltage are set by Electrical; other teams design to the published envelope.'),
+        artifact('STA-EL-001', 'status', 'electrical', [], '2026-09-18T16:20:00Z', 'accepted', SRC_DEC_BE_002,
+          'Pack v1 prototype on the bench', '300 mm pack assembled and cycling on the bench; thermal test still pending.')
       ],
-      frontend: [
-        artifact('STA-FE-001', 'status', 'frontend', [], '2026-09-17T15:10:00Z', 'accepted', { label: "chat: Sam's Claude chat, Sep 17" },
-          'Orders table UI scaffolded', 'Table renders against mocked data; wiring to the live API is next.')
+      mechanical: [
+        artifact('STA-ME-001', 'status', 'mechanical', [], '2026-09-17T15:10:00Z', 'accepted', { label: "chat: Sam's Claude chat, Sep 17" },
+          'Frame CAD v1 complete', 'Frame modelled around the current pack; prototype weld-up is next.')
       ]
     },
     proposals: [],
@@ -282,9 +284,9 @@ function clone(o) { return JSON.parse(JSON.stringify(o)); }
 function norm(t) { return String(t || '').replace(/\s+/g, ' ').trim(); }
 function findById(list, id) { for (var i = 0; i < list.length; i++) if (list[i].id === id) return list[i]; return null; }
 
-/* Current accepted head of the Orders API interface lineage (INT-BE-001 → …). */
+/* Current accepted head of the battery pack interface lineage (INT-EL-001 → …). */
 function headInterface(state) {
-  var a = findById(state.whiteboard, 'INT-BE-001');
+  var a = findById(state.whiteboard, 'INT-EL-001');
   while (a && a.supersededBy && findById(state.whiteboard, a.supersededBy)) a = findById(state.whiteboard, a.supersededBy);
   return a;
 }
@@ -302,14 +304,14 @@ function sync(state, now) {
     return { state: s, toast: 'Nothing new to translate.', fresh: [] };
   }
   var n = parseInt(head.id.slice(-3), 10) + 1;
-  var id = 'INT-BE-' + ('00' + n).slice(-3);
-  var p = artifact(id, 'interface', 'backend', ['frontend'], now, 'proposed',
-    { label: 'Team Backend board · Orders API draft', view: 'backend', el: 'draft-panel' },
-    'Orders API response shape (v' + n + ')', draft);
+  var id = 'INT-EL-' + ('00' + n).slice(-3);
+  var p = artifact(id, 'interface', 'electrical', ['mechanical'], now, 'proposed',
+    { label: 'Team Electrical board · Battery pack draft', view: 'electrical', el: 'draft-panel' },
+    'Battery pack envelope (v' + n + ')', draft);
   p.supersedes = head.id;
-  p.diff = (draft === CURRENCY_TEXT && norm(head.body.text) === SEED_TEXT)
-    ? CURRENCY_DIFF
-    : "Response shape changed from '" + norm(head.body.text) + "' to '" + draft + "'.";
+  p.diff = (draft === EDIT_TEXT && norm(head.body.text) === SEED_TEXT)
+    ? EDIT_DIFF
+    : "Pack envelope changed from '" + norm(head.body.text) + "' to '" + draft + "'.";
   s.proposals.push(p);
   return { state: s, toast: 'Proposed ' + id + ' — review it in the tray.', fresh: ['card-' + id] };
 }
@@ -329,15 +331,15 @@ function accept(state, id, now) {
     at = s.whiteboard.indexOf(old) + 1;
   }
   s.whiteboard.splice(at, 0, p);
-  var canned = p.diff === CURRENCY_DIFF;
+  var canned = p.diff === EDIT_DIFF;
   s.alerts.push({
-    id: 'ALR-' + (s.alerts.length + 1), team: 'frontend', from: p.supersedes, to: p.id, created: now,
+    id: 'ALR-' + (s.alerts.length + 1), team: 'mechanical', from: p.supersedes, to: p.id, created: now,
     text: canned
-      ? 'Orders API adds a currency field; total_cents unchanged. Your orders table reads this shape — review whether it must handle currency.'
-      : 'Orders API response shape changed. Your orders table reads this shape — review whether it must change.',
+      ? 'Pack grows 40 mm on the long axis; voltage unchanged. Your frame is built to the 300 mm envelope — recheck frame fit; the current frame won’t fit the new pack.'
+      : 'Battery pack envelope changed. Your frame is built to this envelope — recheck frame fit.',
     link: { view: 'global', el: 'card-' + p.id }
   });
-  return { state: s, toast: 'Accepted — Team Frontend alerted.', fresh: ['card-' + p.id] };
+  return { state: s, toast: 'Accepted — Team Mechanical alerted.', fresh: ['card-' + p.id] };
 }
 
 function dismiss(state, id) {
@@ -352,29 +354,29 @@ function importChat(state) {
   var src = { label: "chat: Sam's Claude chat, Sep 19" };
   var t = '2026-09-19T09:00:00Z';
   var items = [
-    artifact('DEC-FE-001', 'decision', 'frontend', [], t, 'accepted', src,
-      'State management: Zustand + react-query', 'Zustand for UI state, react-query for server state. Locked in.'),
-    artifact('INT-FE-001', 'interface', 'frontend', ['backend'], t, 'accepted', src,
-      'Orders table coupled to GET /orders shape', 'The table renders { id, items[], total_cents, status } exactly; a shape change breaks frontend.'),
-    artifact('BLK-FE-001', 'blocker', 'frontend', ['payments'], t, 'accepted', src,
-      'Checkout blocked on payments sandbox key', 'No sandbox credentials since Tuesday; checkout flow cannot start.'),
-    artifact('QST-FE-001', 'question', 'frontend', ['payments'], t, 'accepted', src,
-      'Mock payments or wait?', 'Undecided whether to mock the sandbox or wait; needs payments team input.')
+    artifact('DEC-ME-001', 'decision', 'mechanical', [], t, 'accepted', src,
+      'Frame material locked to 6061 aluminum', '6061-T6 tube for the main frame: weldable, light and in budget. Locked in.'),
+    artifact('INT-ME-001', 'interface', 'mechanical', ['electrical'], t, 'accepted', src,
+      'Frame built to the 300 mm pack envelope', 'Battery bay is sized to 300 × 120 × 90 mm exactly; a longer pack will not fit the frame.'),
+    artifact('BLK-ME-001', 'blocker', 'mechanical', ['procurement'], t, 'accepted', src,
+      'Waiting on supplier tube stock', 'No 6061 tube delivery since Tuesday; frame weld-up cannot start.'),
+    artifact('QST-ME-001', 'question', 'mechanical', ['electrical'], t, 'accepted', src,
+      'Reinforce mounts now or after battery decision?', 'Undecided whether to reinforce the pack mounts now or wait for the final battery size; needs Electrical input.')
   ];
-  s.boards.frontend = s.boards.frontend.concat(items);
+  s.boards.mechanical = s.boards.mechanical.concat(items);
   s.imported = true;
   return { state: s, toast: 'Imported 4 artifacts.', fresh: items.map(function (a) { return 'card-' + a.id; }) };
 }
 
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = { seedState: seedState, sync: sync, accept: accept, dismiss: dismiss, importChat: importChat,
-    setDraft: setDraft, setView: setView, headInterface: headInterface, CURRENCY_TEXT: CURRENCY_TEXT, SEED_TEXT: SEED_TEXT };
+    setDraft: setDraft, setView: setView, headInterface: headInterface, EDIT_TEXT: EDIT_TEXT, SEED_TEXT: SEED_TEXT };
 }
 
 /* ===================== DOM rendering ===================== */
 if (typeof document !== 'undefined') (function () {
   var state = setView(seedState(), 'home').state;   /* 'home' (whole office in shot) is a presentation-only view */
-  var seenAlerts = 0;                               /* UI-only: alerts already looked at in the Frontend board */
+  var seenAlerts = 0;                               /* UI-only: alerts already looked at in the Mechanical board */
   var busy = false;                                 /* true while a moment is playing */
   var popTray = false;
   var suppressClick = false;
@@ -392,7 +394,7 @@ if (typeof document !== 'undefined') (function () {
   /* ---------- Isometric office scene (inline SVG, world units = SVG units) ---------- */
   var U = 42, CX = 0.866, VB = { x: -530, y: -140, w: 1060, h: 745 };
   var WOOD = ['#e3bf92', '#c89b6a', '#a97c4f'];
-  var POS = { priya: [3.2, 11.5], sam: [11.5, 3.2], translatorIdle: [6.0, 7.9], translatorBackend: [5.0, 10.3] };
+  var POS = { priya: [3.2, 11.5], sam: [11.5, 3.2], translatorIdle: [6.0, 7.9], translatorElectrical: [5.0, 10.3] };
 
   function P(x, y, z) { return [(x - y) * CX * U, (x + y) * 0.5 * U - (z || 0) * U]; }
   function pts(arr) {
@@ -411,8 +413,8 @@ if (typeof document !== 'undefined') (function () {
   var WB = (function () { var b = P(5.0, 5.4, 0), w = 214, h = 150; return { b: b, w: w, h: h, x: b[0] - w / 2, y: b[1] - 42 - h }; })();
   var FRAME_W = 1400;
   var FRAMES = {
-    backend: { ax: 330, ay: 250, w: 140, anchor: 'bottom', cls: 'sign' },
-    frontend: { ax: 730, ay: 250, w: 140, anchor: 'bottom', cls: 'sign' },
+    electrical: { ax: 330, ay: 250, w: 140, anchor: 'bottom', cls: 'sign' },
+    mechanical: { ax: 730, ay: 250, w: 140, anchor: 'bottom', cls: 'sign' },
     global: { ax: WB.b[0] - VB.x, ay: WB.y - VB.y + 5, w: 204, anchor: 'top', cls: 'onboard' }
   };
   var WALK_SHOT = { x: 150, y: 130, w: 560, h: 400, maxS: 4 };
@@ -492,8 +494,8 @@ if (typeof document !== 'undefined') (function () {
     s += plant(0.8, 0.8);
     s += '</g>';
 
-    /* Frontend cubicle (right) */
-    s += '<g class="zone" tabindex="0" role="button" aria-label="Fly to Team Frontend" data-action="view" data-view="frontend">';
+    /* Mechanical cubicle (right) */
+    s += '<g class="zone" tabindex="0" role="button" aria-label="Fly to Team Mechanical" data-action="view" data-view="mechanical">';
     s += '<g stroke="rgba(70,45,20,0.28)" stroke-width="1" stroke-linejoin="round">';
     s += poly([[8.4, 0.3, 0], [13.5, 0.3, 0], [13.5, 5.4, 0], [8.4, 5.4, 0]], '#f3cfa4', 'class="hot"');
     s += poly([[8.4, 0.3, 0], [13.5, 0.3, 0], [13.5, 5.4, 0], [8.4, 5.4, 0]], 'none', 'class="ring" stroke="#c4321a" stroke-width="3" stroke-dasharray="8 6"');
@@ -501,7 +503,7 @@ if (typeof document !== 'undefined') (function () {
     s += desk(8.55, 0.8, 9.35, 2.4, { chair: ['#f0a35e', '#d98845', '#bd7033'] }) + desk(8.55, 3.2, 9.35, 4.8, { chair: ['#f0a35e', '#d98845', '#bd7033'] });
     s += desk(10.8, 0.45, 12.4, 1.25, { chair: ['#f0a35e', '#d98845', '#bd7033'] });
     s += '</g>' + signPoles(1);
-    s += '<text transform="matrix(0.866,-0.5,0.866,0.5,' + P(13.05, 2.85, 0).join(',') + ')" text-anchor="middle" font-size="25" font-weight="800" letter-spacing="3" fill="rgba(90,50,10,0.55)">TEAM FRONTEND</text>';
+    s += '<text transform="matrix(0.866,-0.5,0.866,0.5,' + P(13.05, 2.85, 0).join(',') + ')" text-anchor="middle" font-size="20" font-weight="800" letter-spacing="1.5" fill="rgba(90,50,10,0.55)">TEAM MECHANICAL</text>';
     var bubble = state.alerts.length > seenAlerts
       ? '<g id="sam-bubble" transform="translate(0,-128)"><g class="bob"><path d="M-17,-34h34a8,8 0 0 1 8,8v22a8,8 0 0 1 -8,8h-10l-7,10l-7,-10h-10a8,8 0 0 1 -8,-8v-22a8,8 0 0 1 8,-8z" fill="#c4321a" stroke="#fff" stroke-width="2.5"/>' +
         '<text x="0" y="-5" text-anchor="middle" font-size="28" font-weight="900" fill="#fff">!</text></g></g>'
@@ -509,15 +511,15 @@ if (typeof document !== 'undefined') (function () {
     s += avatar('av-sam', POS.sam, 'Sam', '#e8872b', '#6b4423', bubble);
     s += '</g>';
 
-    /* Backend cubicle (left) */
-    s += '<g class="zone" tabindex="0" role="button" aria-label="Fly to Team Backend" data-action="view" data-view="backend">';
+    /* Electrical cubicle (left) */
+    s += '<g class="zone" tabindex="0" role="button" aria-label="Fly to Team Electrical" data-action="view" data-view="electrical">';
     s += '<g stroke="rgba(70,45,20,0.28)" stroke-width="1" stroke-linejoin="round">';
     s += poly([[0.3, 8.4, 0], [5.4, 8.4, 0], [5.4, 13.5, 0], [0.3, 13.5, 0]], '#bcd6e6', 'class="hot"');
     s += poly([[0.3, 8.4, 0], [5.4, 8.4, 0], [5.4, 13.5, 0], [0.3, 13.5, 0]], 'none', 'class="ring" stroke="#c4321a" stroke-width="3" stroke-dasharray="8 6"');
     s += box(0.3, 8.25, 0, 5.4, 8.4, 1.5, ['#e6dccb', '#d3c7b0', '#c2b499']);
     s += desk(0.8, 8.55, 2.4, 9.35) + desk(3.2, 8.55, 4.8, 9.35) + desk(0.45, 10.8, 1.25, 12.4);
     s += '</g>' + signPoles(-1);
-    s += '<text transform="matrix(0.866,0.5,-0.866,0.5,' + P(2.85, 13.05, 0).join(',') + ')" text-anchor="middle" font-size="25" font-weight="800" letter-spacing="3" fill="rgba(20,50,80,0.55)">TEAM BACKEND</text>';
+    s += '<text transform="matrix(0.866,0.5,-0.866,0.5,' + P(2.85, 13.05, 0).join(',') + ')" text-anchor="middle" font-size="20" font-weight="800" letter-spacing="1.5" fill="rgba(20,50,80,0.55)">TEAM ELECTRICAL</text>';
     s += avatar('av-priya', POS.priya, 'Priya', '#4353c4', '#1f1a17');
     s += '</g>';
 
@@ -526,8 +528,8 @@ if (typeof document !== 'undefined') (function () {
     s += '<g class="zone" tabindex="0" role="button" aria-label="Fly to the Global whiteboard" data-action="view" data-view="global">';
     s += '<ellipse cx="' + b[0] + '" cy="' + b[1] + '" rx="112" ry="17" fill="rgba(60,40,20,0.16)"/>';
     s += '<path d="M' + (b[0] - 80) + ',' + b[1] + 'v-50M' + (b[0] + 80) + ',' + b[1] + 'v-50M' + (b[0] - 96) + ',' + (b[1] + 3) + 'h32M' + (b[0] + 64) + ',' + (b[1] + 3) + 'h32" stroke="#8d949b" stroke-width="5" stroke-linecap="round" fill="none"/>';
-    s += '<rect x="' + (b[0] - 62) + '" y="' + (WB.y - 25) + '" width="124" height="22" rx="6" fill="#a0744a"/>';
-    s += '<text x="' + b[0] + '" y="' + (WB.y - 9) + '" text-anchor="middle" font-size="13" font-weight="800" letter-spacing="2.5" fill="#fff8ea">WHITEBOARD</text>';
+    s += '<rect class="wb-title" x="' + (b[0] - 62) + '" y="' + (WB.y - 25) + '" width="124" height="22" rx="6" fill="#a0744a"/>';
+    s += '<text x="' + b[0] + '" y="' + (WB.y - 9) + '" text-anchor="middle" class="wb-title" font-size="13" font-weight="800" letter-spacing="2.5" fill="#fff8ea">WHITEBOARD</text>';
     s += '<rect class="hot" x="' + WB.x + '" y="' + WB.y + '" width="' + WB.w + '" height="' + WB.h + '" rx="7" fill="#fcfdfd" stroke="#c3c9ce" stroke-width="6"/>';
     s += '<rect class="ring" x="' + (WB.x - 7) + '" y="' + (WB.y - 7) + '" width="' + (WB.w + 14) + '" height="' + (WB.h + 14) + '" rx="11" fill="none" stroke="#c4321a" stroke-width="3" stroke-dasharray="8 6"/>';
     s += '<rect x="' + (WB.x + 20) + '" y="' + (WB.y + WB.h + 1) + '" width="70" height="6" rx="3" fill="#aeb5bb"/>';
@@ -609,14 +611,14 @@ if (typeof document !== 'undefined') (function () {
   }
 
   function boardsHTML() {
-    var backend = headHTML('Team Backend', 'The team\'s own board and working drafts.') +
-      '<div class="cols"><section><h2>Team board</h2><div class="cork"><div class="grid">' + state.boards.backend.map(cardHTML).join('') + '</div></div></section>' +
-      '<section><h2>Working draft</h2><div class="panel clip" id="draft-panel"><h3>Orders API draft</h3>' +
+    var electrical = headHTML('Team Electrical', 'The team\'s own board and working drafts.') +
+      '<div class="cols"><section><h2>Team board</h2><div class="cork"><div class="grid">' + state.boards.electrical.map(cardHTML).join('') + '</div></div></section>' +
+      '<section><h2>Working draft</h2><div class="panel clip" id="draft-panel"><h3>Battery pack draft</h3>' +
       '<p class="hint">Click the text to edit.</p>' +
-      '<div class="draft" id="draft" contenteditable="true" spellcheck="false" role="textbox" aria-label="Orders API draft"></div>' +
-      '<button class="btn" data-action="add-currency">Add currency field</button></div></section></div>';
-    var frontend = headHTML('Team Frontend', 'The team\'s own board and incoming alerts.') +
-      '<div class="cols"><section><h2>Team board</h2><div class="cork"><div class="grid">' + state.boards.frontend.map(cardHTML).join('') + '</div></div></section>' +
+      '<div class="draft" id="draft" contenteditable="true" spellcheck="false" role="textbox" aria-label="Battery pack draft"></div>' +
+      '<button class="btn" data-action="scripted-edit">Swap in bigger battery</button></div></section></div>';
+    var mechanical = headHTML('Team Mechanical', 'The team\'s own board and incoming alerts.') +
+      '<div class="cols"><section><h2>Team board</h2><div class="cork"><div class="grid">' + state.boards.mechanical.map(cardHTML).join('') + '</div></div></section>' +
       '<div><section><h2>Alerts</h2><div class="stack">' +
       (state.alerts.length ? state.alerts.map(alertHTML).join('') : '<div class="empty">No alerts.</div>') + '</div></section>' +
       '<section><h2>Import</h2><div class="panel"><button class="btn" data-action="import">Import Claude export — Sam\'s chat</button>' +
@@ -626,13 +628,13 @@ if (typeof document !== 'undefined') (function () {
       '<section><h2>Proposal tray</h2><div class="inbox"><div class="stack">' +
       (state.proposals.length ? state.proposals.map(proposalHTML).join('') : '<div class="empty">No proposals. Sync to check for changes.</div>') +
       '</div></div></section></div>';
-    return frameHTML('backend', backend) + frameHTML('frontend', frontend) + frameHTML('global', global);
+    return frameHTML('electrical', electrical) + frameHTML('mechanical', mechanical) + frameHTML('global', global);
   }
 
   /* Tabs, badge, HUD, which board is "in focus" — no world rebuild needed */
   function syncChrome() {
     var v = state.view;
-    if (v === 'frontend') {                       /* looking at the alerts clears Sam's bubble */
+    if (v === 'mechanical') {                       /* looking at the alerts clears Sam's bubble */
       seenAlerts = state.alerts.length;
       var bub = document.getElementById('sam-bubble');
       if (bub && bub.parentNode) bub.parentNode.removeChild(bub);
@@ -643,6 +645,7 @@ if (typeof document !== 'undefined') (function () {
     badge.hidden = state.alerts.length === 0;
     badge.textContent = state.alerts.length;
     badge.setAttribute('aria-label', state.alerts.length + ' alerts');
+    world.setAttribute('data-view', v);
     document.getElementById('hud-back').hidden = v === 'home';
     document.getElementById('hint').hidden = v !== 'home';
     var frames = document.querySelectorAll('.frame');
@@ -650,7 +653,7 @@ if (typeof document !== 'undefined') (function () {
   }
 
   function render() {
-    if (state.view === 'frontend') seenAlerts = state.alerts.length;
+    if (state.view === 'mechanical') seenAlerts = state.alerts.length;
     world.innerHTML = sceneSVG() + boardsHTML();
     document.getElementById('draft').textContent = state.draft;
     syncChrome();
@@ -708,7 +711,7 @@ if (typeof document !== 'undefined') (function () {
     c.y = Math.max(vh / 2 - VB.h * c.s, Math.min(vh / 2, c.y));
     setCam(c, false);
     var cx = (vw / 2 - c.x) / c.s, cy = (vh / 2 - c.y) / c.s, found = 'home';
-    ['backend', 'frontend', 'global'].forEach(function (v) {
+    ['electrical', 'mechanical', 'global'].forEach(function (v) {
       var r = shotFor(v);
       if (c.s * r.k >= 0.5 && cx > r.x - 8 && cx < r.x + r.w + 8 && cy > r.y - 8 && cy < r.y + r.h + 8) found = v;
     });
@@ -746,7 +749,7 @@ if (typeof document !== 'undefined') (function () {
       void tr.getBoundingClientRect();
       tr.classList.add('walking');
       tr.style.transition = 'transform 0.5s ease-in-out';
-      tr.style.transform = translate(POS.translatorBackend);
+      tr.style.transform = translate(POS.translatorElectrical);
       setTimeout(function () {
         tr.classList.add('carrying');
         tr.style.transition = 'transform 1.4s ease-in-out';
@@ -772,7 +775,7 @@ if (typeof document !== 'undefined') (function () {
     if (action === 'view') go(el.getAttribute('data-view'));
     else if (action === 'sync') runSync();
     else if (action === 'reset') { seenAlerts = 0; apply({ state: setView(seedState(), 'home').state, toast: 'Reset to seed state.', fresh: [] }); }
-    else if (action === 'add-currency') { var r = setDraft(state, CURRENCY_TEXT); r.fresh = ['draft']; apply(r); }
+    else if (action === 'scripted-edit') { var r = setDraft(state, EDIT_TEXT); r.fresh = ['draft']; apply(r); }
     else if (action === 'accept') { var ra = accept(state, el.getAttribute('data-id'), now); ra.fresh = ra.fresh.concat(['wb-frame']); apply(ra); }
     else if (action === 'dismiss') apply(dismiss(state, el.getAttribute('data-id')));
     else if (action === 'import') apply(importChat(state));
@@ -795,7 +798,7 @@ if (typeof document !== 'undefined') (function () {
     if ((e.key === 'Enter' || e.key === ' ') && t && t.classList && t.classList.contains('zone')) {
       e.preventDefault(); go(t.getAttribute('data-view')); return;
     }
-    var views = { '0': 'home', '1': 'backend', '2': 'frontend', '3': 'global' };
+    var views = { '0': 'home', '1': 'electrical', '2': 'mechanical', '3': 'global' };
     if (views[e.key]) go(views[e.key]);
   });
 
