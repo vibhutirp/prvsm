@@ -32,7 +32,7 @@
   }
   * { box-sizing: border-box; }
   html { font-size: 17px; }
-  body { margin: 0; min-height: 100vh; color: var(--ink); font-family: var(--sans); line-height: 1.45;
+  body { margin: 0; height: 100vh; overflow: hidden; display: flex; flex-direction: column; color: var(--ink); font-family: var(--sans); line-height: 1.45;
     background: linear-gradient(180deg, var(--bg) 0%, var(--bg) 70%, var(--bg-deep) 100%); background-attachment: fixed; }
   button { font: inherit; cursor: pointer; }
   button:focus-visible, a:focus-visible, [contenteditable]:focus-visible, .zone:focus-visible { outline: 3px solid var(--decision); outline-offset: 2px; }
@@ -56,27 +56,40 @@
   .btn-accent { background: var(--accent); border-color: #96230f; color: var(--accent-ink); }
   .btn-accent:hover { background: #a82a15; }
 
-  main { max-width: 1280px; margin: 0 auto; padding: 18px 28px 90px; }
 
-  /* ---------- Office (home) ---------- */
-  .hq-strip { display: flex; align-items: center; justify-content: space-between; gap: 14px; flex-wrap: wrap;
-    background: linear-gradient(180deg, #b98556, var(--wood-dark)); color: #fff8ea; border-radius: 14px 14px 0 0; padding: 10px 18px;
-    box-shadow: inset 0 -3px 0 rgba(0, 0, 0, 0.15); }
-  .hq-title { font-weight: 800; letter-spacing: 0.16em; font-size: 1.05rem; text-shadow: 0 1px 0 rgba(0, 0, 0, 0.25); }
+  /* ---------- One canvas: viewport + world + camera ---------- */
+  main.viewport { flex: 1; min-height: 0; position: relative; overflow: hidden; cursor: grab; touch-action: none; user-select: none;
+    background: radial-gradient(ellipse at 50% 40%, #fdf6e8 0%, #ecdcbd 100%); }
+  main.viewport.dragging { cursor: grabbing; }
+  .world { position: absolute; left: 0; top: 0; width: 1060px; height: 745px; transform-origin: 0 0; }
+  .world.fly { transition: transform 0.9s cubic-bezier(0.6, 0, 0.2, 1); }
+  .world > svg { position: absolute; left: 0; top: 0; width: 1060px; height: 745px; overflow: visible; display: block; font-family: var(--sans); }
+  .frame { position: absolute; width: 1400px; cursor: zoom-in; }
+  .frame.focus { cursor: auto; }
+  .frame:not(.focus) * { pointer-events: none; }
+  .frame.sign { background: var(--bg); border: 14px solid var(--wood); border-radius: 30px; padding: 22px 30px 30px;
+    box-shadow: 0 24px 50px rgba(70, 40, 10, 0.35); }
+  .frame.onboard { padding: 4px 16px 10px; }
+  .frame.onboard .whiteboard { border: 0; box-shadow: none; padding: 6px 0 0; background: transparent; border-radius: 8px; }
+  .frame.onboard .whiteboard::after { display: none; }
+  .draft { user-select: text; }
+
+  /* HUD (stays put while the camera moves) */
+  .hud-top { position: absolute; left: 16px; right: 16px; top: 10px; z-index: 5; }
+  .hq-strip { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; cursor: default;
+    background: linear-gradient(180deg, #b98556, var(--wood-dark)); color: #fff8ea; border-radius: 14px; padding: 7px 14px;
+    box-shadow: inset 0 -3px 0 rgba(0, 0, 0, 0.15), 0 6px 16px rgba(70, 40, 10, 0.25); }
+  .hq-strip .btn { padding: 4px 12px; font-size: 0.9rem; }
+  .hq-title { font-weight: 800; letter-spacing: 0.16em; font-size: 1.05rem; text-shadow: 0 1px 0 rgba(0, 0, 0, 0.25); flex: 1; }
   .roster { display: flex; gap: 8px; flex-wrap: wrap; }
-  .presence { background: #fffdf8; color: var(--ink); border-radius: 999px; padding: 3px 12px 3px 9px; font-size: 0.85rem; font-weight: 700;
+  .presence { border: 0; background: #fffdf8; color: var(--ink); border-radius: 999px; padding: 3px 12px 3px 9px; font-size: 0.85rem; font-weight: 700;
     display: inline-flex; align-items: center; gap: 7px; box-shadow: 0 2px 0 rgba(0, 0, 0, 0.18); }
+  .presence:hover { background: #fff; transform: translateY(-1px); }
   .presence i { width: 10px; height: 10px; border-radius: 50%; background: #35b24a; box-shadow: 0 0 0 2px #d6f3da; display: inline-block; }
   .presence small { color: var(--muted); font-weight: 600; font-size: 0.8rem; }
-  .scene-wrap { overflow: hidden; border-radius: 0 0 14px 14px; border: 1px solid var(--line-strong); border-top: 0;
-    background: radial-gradient(ellipse at 50% 40%, #fdf6e8 0%, #f1e2c6 100%); }
-  .scene-fit { width: min(100%, calc((100vh - 200px) * 1.4228)); margin: 0 auto; }
-  .scene { transform-origin: 50% 50%; }
-  .scene svg { display: block; width: 100%; height: auto; font-family: var(--sans); user-select: none; }
-  .scene.zooming { transform: scale(2.7); opacity: 0; transition: transform 0.42s cubic-bezier(0.5, 0, 0.85, 0.5), opacity 0.42s ease-in; }
-  @keyframes sceneIn { from { transform: scale(1.45); opacity: 0; } }
-  .scene.enter { animation: sceneIn 0.4s ease-out 1; }
-  .scene-hint { text-align: center; color: var(--ink-soft); margin: 10px 0 0; font-weight: 600; }
+  .scene-hint { position: absolute; left: 50%; bottom: 12px; transform: translateX(-50%); z-index: 5; margin: 0; white-space: nowrap; cursor: default;
+    background: rgba(255, 253, 248, 0.92); color: var(--ink-soft); font-weight: 600; font-size: 0.9rem; padding: 5px 18px; border-radius: 999px;
+    box-shadow: 0 3px 10px rgba(70, 40, 10, 0.18); }
   .zone { cursor: pointer; outline: none; }
   .zone .hot { transition: filter 0.15s; }
   .zone:hover .hot, .zone:focus-visible .hot { filter: brightness(1.07) saturate(1.15); }
@@ -93,13 +106,12 @@
   .pop { animation: pop 0.5s ease-out 1; transform-box: fill-box; transform-origin: 50% 100%; }
 
   /* ---------- Flat views: boards pinned on the wall ---------- */
-  @keyframes flatIn { from { transform: scale(0.93); opacity: 0; } }
-  .flat.enter { animation: flatIn 0.28s ease-out 1; }
-  .view-head { display: flex; align-items: center; gap: 18px; margin: 4px 0 18px; flex-wrap: wrap; }
+  .view-head { display: flex; align-items: baseline; gap: 16px; margin: 0 0 14px; flex-wrap: wrap; }
   .view-head h1 { margin: 0; font-size: 1.5rem; letter-spacing: -0.01em; }
-  .view-head p { margin: 2px 0 0; color: var(--ink-soft); }
-  .cols { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: 28px; align-items: start; }
-  @media (max-width: 860px) { .cols { grid-template-columns: 1fr; } }
+  .view-head p { margin: 0; color: var(--ink-soft); }
+  .cols { display: grid; grid-template-columns: minmax(0, 2.2fr) minmax(0, 1fr); gap: 28px; align-items: start; }
+  .cols.wide { grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr); }
+  .cork .grid { grid-template-columns: repeat(auto-fill, minmax(255px, 1fr)); }
   h2 { display: inline-block; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.1em; color: #fff8ea; margin: 0 0 12px;
     background: var(--wood-dark); padding: 3px 12px; border-radius: 6px; box-shadow: 0 2px 0 rgba(0, 0, 0, 0.18); }
   section + section { margin-top: 26px; }
@@ -179,7 +191,7 @@
   .alert p { margin: 4px 0 8px; }
 
   /* Toast */
-  .toasts { position: fixed; left: 50%; bottom: 26px; transform: translateX(-50%); display: grid; gap: 8px; z-index: 20; pointer-events: none; }
+  .toasts { position: fixed; left: 50%; bottom: 14px; transform: translateX(-50%); display: grid; gap: 8px; z-index: 20; pointer-events: none; }
   .toast { background: var(--ink); color: #fff; padding: 11px 20px; border-radius: 999px; font-weight: 600; box-shadow: 0 6px 20px rgba(42, 33, 24, 0.3); }
 
   /* Highlight pulse */
@@ -191,8 +203,8 @@
   .pulse { animation: pulse 1.5s ease-out 1; }
   @media (prefers-reduced-motion: reduce) {
     .pulse { animation: none; outline: 3px solid var(--accent); outline-offset: 2px; }
-    .scene.enter, .flat.enter, .bob, .pop, .avatar.walking .av-body { animation: none; }
-    .scene.zooming { transition: none; }
+    .bob, .pop, .avatar.walking .av-body { animation: none; }
+    .world.fly { transition: none; }
   }
   [hidden] { display: none !important; }
 </style>
@@ -211,7 +223,19 @@
     <button class="btn" data-action="reset">Reset</button>
   </div>
 </header>
-<main id="app"></main>
+<main id="app" class="viewport">
+  <div class="world" id="world"></div>
+  <div class="hud-top"><div class="hq-strip">
+    <button class="btn" id="hud-back" data-action="view" data-view="home" hidden>← Back to office <kbd>0</kbd></button>
+    <div class="hq-title">PRVSM HEADQUARTERS</div>
+    <div class="roster">
+      <button class="presence" data-action="view" data-view="backend"><i></i>Priya <small>· Backend</small></button>
+      <button class="presence" data-action="view" data-view="frontend"><i></i>Sam <small>· Frontend</small></button>
+      <button class="presence" data-action="view" data-view="global"><i></i>Translator</button>
+    </div>
+  </div></div>
+  <p class="scene-hint" id="hint">Click a cubicle or the whiteboard to fly in · <kbd>1</kbd> <kbd>2</kbd> <kbd>3</kbd> · scroll to zoom, drag to pan, <kbd>0</kbd> to come back</p>
+</main>
 <div class="toasts" id="toasts" role="status" aria-live="polite"></div>
 
 <script>
@@ -349,12 +373,13 @@ if (typeof module !== 'undefined' && module.exports) {
 
 /* ===================== DOM rendering ===================== */
 if (typeof document !== 'undefined') (function () {
-  var state = setView(seedState(), 'home').state;   /* 'home' (the office) is a presentation-only view */
-  var seenAlerts = 0;                               /* UI-only: alerts already looked at in the Frontend view */
-  var busy = false;                                 /* true while a transition / moment is playing */
-  var lastView = null;
+  var state = setView(seedState(), 'home').state;   /* 'home' (whole office in shot) is a presentation-only view */
+  var seenAlerts = 0;                               /* UI-only: alerts already looked at in the Frontend board */
+  var busy = false;                                 /* true while a moment is playing */
   var popTray = false;
-  var app = document.getElementById('app');
+  var suppressClick = false;
+  var viewport = document.getElementById('app');
+  var world = document.getElementById('world');
   var toasts = document.getElementById('toasts');
 
   function esc(t) {
@@ -364,12 +389,10 @@ if (typeof document !== 'undefined') (function () {
     return !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
   }
 
-  /* ---------- Isometric office scene (inline SVG) ---------- */
+  /* ---------- Isometric office scene (inline SVG, world units = SVG units) ---------- */
   var U = 42, CX = 0.866, VB = { x: -530, y: -140, w: 1060, h: 745 };
-  var HUES = { decision: '#4353c4', 'interface': '#0b7a75', blocker: '#b45309', status: '#3f7d20', question: '#7e3fa8' };
   var WOOD = ['#e3bf92', '#c89b6a', '#a97c4f'];
   var POS = { priya: [3.2, 11.5], sam: [11.5, 3.2], translatorIdle: [6.0, 7.9], translatorBackend: [5.0, 10.3] };
-  var ZONE_ORIGIN = { backend: [2.9, 10.9], frontend: [10.9, 2.9], global: [5.6, 5.4] };
 
   function P(x, y, z) { return [(x - y) * CX * U, (x + y) * 0.5 * U - (z || 0) * U]; }
   function pts(arr) {
@@ -383,6 +406,18 @@ if (typeof document !== 'undefined') (function () {
       poly([[x0, y0, z1], [x1, y0, z1], [x1, y1, z1], [x0, y1, z1]], c[0]);
   }
   function translate(pos) { var p = P(pos[0], pos[1], 0); return 'translate(' + p[0].toFixed(1) + 'px,' + p[1].toFixed(1) + 'px)'; }
+
+  /* The physical whiteboard (SVG) and the boards placed in the world (HTML, scaled down) */
+  var WB = (function () { var b = P(5.0, 5.4, 0), w = 214, h = 150; return { b: b, w: w, h: h, x: b[0] - w / 2, y: b[1] - 42 - h }; })();
+  var FRAME_W = 1400;
+  var FRAMES = {
+    backend: { ax: 330, ay: 250, w: 140, anchor: 'bottom', cls: 'sign' },
+    frontend: { ax: 730, ay: 250, w: 140, anchor: 'bottom', cls: 'sign' },
+    global: { ax: WB.b[0] - VB.x, ay: WB.y - VB.y + 5, w: 204, anchor: 'top', cls: 'onboard' }
+  };
+  var WALK_SHOT = { x: 150, y: 130, w: 560, h: 400, maxS: 4 };
+  var HOME_SHOT = { x: 0, y: -6, w: 1060, h: 756, maxS: 3 };
+  var HUD_TOP = 64;
 
   function desk(x0, y0, x1, y1, o) {
     o = o || {};
@@ -439,16 +474,13 @@ if (typeof document !== 'undefined') (function () {
       (extra || '') + '</g>';
   }
 
-  function notes(board, quad) {
-    return board.slice(0, 6).map(function (a, i) {
-      return poly(quad(i), '#fffdf8') + poly(quad(i, true), HUES[a.type] || '#9aa1ab', 'stroke="none"');
-    }).join('');
+  function signPoles(sign) {   /* the team board is a sign mounted on the cubicle partition */
+    return '<path d="M' + (sign * 230) + ',108V152M' + (sign * 170) + ',108V187" stroke="#8d949b" stroke-width="4" stroke-linecap="round" fill="none"/>';
   }
 
   function sceneSVG() {
     var s = '<svg viewBox="' + VB.x + ' ' + VB.y + ' ' + VB.w + ' ' + VB.h + '" role="img" aria-label="PrVSM office floor">';
     s += '<g stroke="rgba(70,45,20,0.28)" stroke-width="1" stroke-linejoin="round">';
-    /* floor slab, walls, windows */
     s += box(0, 0, -0.35, 14, 14, 0, ['#ecd3aa', '#c9a877', '#b39163']);
     for (var i = 1; i < 14; i++) s += '<polyline points="' + pts([[0, i, 0], [14, i, 0]]) + '" fill="none" stroke="rgba(120,80,40,0.16)"/>';
     s += poly([[0, 0, 0], [0, 14, 0], [0, 14, 2.8], [0, 0, 2.8]], '#fbf1de') + poly([[0, 0, 0], [14, 0, 0], [14, 0, 2.8], [0, 0, 2.8]], '#f1e2c6');
@@ -461,67 +493,50 @@ if (typeof document !== 'undefined') (function () {
     s += '</g>';
 
     /* Frontend cubicle (right) */
-    s += '<g class="zone" tabindex="0" role="button" aria-label="Enter Team Frontend" data-action="view" data-view="frontend">';
+    s += '<g class="zone" tabindex="0" role="button" aria-label="Fly to Team Frontend" data-action="view" data-view="frontend">';
     s += '<g stroke="rgba(70,45,20,0.28)" stroke-width="1" stroke-linejoin="round">';
     s += poly([[8.4, 0.3, 0], [13.5, 0.3, 0], [13.5, 5.4, 0], [8.4, 5.4, 0]], '#f3cfa4', 'class="hot"');
     s += poly([[8.4, 0.3, 0], [13.5, 0.3, 0], [13.5, 5.4, 0], [8.4, 5.4, 0]], 'none', 'class="ring" stroke="#c4321a" stroke-width="3" stroke-dasharray="8 6"');
     s += box(8.25, 0.3, 0, 8.4, 5.4, 1.5, ['#e6dccb', '#d3c7b0', '#c2b499']);
-    s += notes(state.boards.frontend, function (i, stripe) {
-      var y = 0.7 + i * 0.75;
-      return stripe ? [[8.4, y, 0.85], [8.4, y + 0.1, 0.85], [8.4, y + 0.1, 1.3], [8.4, y, 1.3]]
-        : [[8.4, y, 0.85], [8.4, y + 0.55, 0.85], [8.4, y + 0.55, 1.3], [8.4, y, 1.3]];
-    });
     s += desk(8.55, 0.8, 9.35, 2.4, { chair: ['#f0a35e', '#d98845', '#bd7033'] }) + desk(8.55, 3.2, 9.35, 4.8, { chair: ['#f0a35e', '#d98845', '#bd7033'] });
     s += desk(10.8, 0.45, 12.4, 1.25, { chair: ['#f0a35e', '#d98845', '#bd7033'] });
-    s += '</g>';
+    s += '</g>' + signPoles(1);
     s += '<text transform="matrix(0.866,-0.5,0.866,0.5,' + P(13.05, 2.85, 0).join(',') + ')" text-anchor="middle" font-size="25" font-weight="800" letter-spacing="3" fill="rgba(90,50,10,0.55)">TEAM FRONTEND</text>';
     var bubble = state.alerts.length > seenAlerts
-      ? '<g transform="translate(0,-128)"><g class="bob"><path d="M-17,-34h34a8,8 0 0 1 8,8v22a8,8 0 0 1 -8,8h-10l-7,10l-7,-10h-10a8,8 0 0 1 -8,-8v-22a8,8 0 0 1 8,-8z" fill="#c4321a" stroke="#fff" stroke-width="2.5"/>' +
+      ? '<g id="sam-bubble" transform="translate(0,-128)"><g class="bob"><path d="M-17,-34h34a8,8 0 0 1 8,8v22a8,8 0 0 1 -8,8h-10l-7,10l-7,-10h-10a8,8 0 0 1 -8,-8v-22a8,8 0 0 1 8,-8z" fill="#c4321a" stroke="#fff" stroke-width="2.5"/>' +
         '<text x="0" y="-5" text-anchor="middle" font-size="28" font-weight="900" fill="#fff">!</text></g></g>'
       : '';
     s += avatar('av-sam', POS.sam, 'Sam', '#e8872b', '#6b4423', bubble);
     s += '</g>';
 
     /* Backend cubicle (left) */
-    s += '<g class="zone" tabindex="0" role="button" aria-label="Enter Team Backend" data-action="view" data-view="backend">';
+    s += '<g class="zone" tabindex="0" role="button" aria-label="Fly to Team Backend" data-action="view" data-view="backend">';
     s += '<g stroke="rgba(70,45,20,0.28)" stroke-width="1" stroke-linejoin="round">';
     s += poly([[0.3, 8.4, 0], [5.4, 8.4, 0], [5.4, 13.5, 0], [0.3, 13.5, 0]], '#bcd6e6', 'class="hot"');
     s += poly([[0.3, 8.4, 0], [5.4, 8.4, 0], [5.4, 13.5, 0], [0.3, 13.5, 0]], 'none', 'class="ring" stroke="#c4321a" stroke-width="3" stroke-dasharray="8 6"');
     s += box(0.3, 8.25, 0, 5.4, 8.4, 1.5, ['#e6dccb', '#d3c7b0', '#c2b499']);
-    s += notes(state.boards.backend, function (i, stripe) {
-      var x = 0.7 + i * 0.75;
-      return stripe ? [[x, 8.4, 0.85], [x + 0.1, 8.4, 0.85], [x + 0.1, 8.4, 1.3], [x, 8.4, 1.3]]
-        : [[x, 8.4, 0.85], [x + 0.55, 8.4, 0.85], [x + 0.55, 8.4, 1.3], [x, 8.4, 1.3]];
-    });
     s += desk(0.8, 8.55, 2.4, 9.35) + desk(3.2, 8.55, 4.8, 9.35) + desk(0.45, 10.8, 1.25, 12.4);
-    s += '</g>';
+    s += '</g>' + signPoles(-1);
     s += '<text transform="matrix(0.866,0.5,-0.866,0.5,' + P(2.85, 13.05, 0).join(',') + ')" text-anchor="middle" font-size="25" font-weight="800" letter-spacing="3" fill="rgba(20,50,80,0.55)">TEAM BACKEND</text>';
     s += avatar('av-priya', POS.priya, 'Priya', '#4353c4', '#1f1a17');
     s += '</g>';
 
-    /* Whiteboard + proposal tray desk (center) */
-    var b = P(5.0, 5.4, 0), bw = 196, bh = 122, bx = b[0] - bw / 2, by = b[1] - 42 - bh;
-    s += '<g class="zone" tabindex="0" role="button" aria-label="Enter Global whiteboard" data-action="view" data-view="global">';
-    s += '<ellipse cx="' + b[0] + '" cy="' + b[1] + '" rx="105" ry="16" fill="rgba(60,40,20,0.16)"/>';
-    s += '<path d="M' + (b[0] - 74) + ',' + b[1] + 'v-50M' + (b[0] + 74) + ',' + b[1] + 'v-50M' + (b[0] - 90) + ',' + (b[1] + 3) + 'h32M' + (b[0] + 58) + ',' + (b[1] + 3) + 'h32" stroke="#8d949b" stroke-width="5" stroke-linecap="round" fill="none"/>';
-    s += '<rect class="hot" x="' + bx + '" y="' + by + '" width="' + bw + '" height="' + bh + '" rx="7" fill="#fcfdfd" stroke="#c3c9ce" stroke-width="6"/>';
-    s += '<rect class="ring" x="' + (bx - 7) + '" y="' + (by - 7) + '" width="' + (bw + 14) + '" height="' + (bh + 14) + '" rx="11" fill="none" stroke="#c4321a" stroke-width="3" stroke-dasharray="8 6"/>';
-    s += '<text x="' + b[0] + '" y="' + (by + 21) + '" text-anchor="middle" font-size="14" font-weight="800" letter-spacing="2.5" fill="#5b4d3d">WHITEBOARD</text>';
-    state.whiteboard.slice(0, 6).forEach(function (a, i) {
-      var mx = bx + 11 + (i % 3) * 60, my = by + 31 + Math.floor(i / 3) * 42, sup = a.state === 'superseded';
-      s += '<g opacity="' + (sup ? 0.5 : 1) + '"><rect x="' + mx + '" y="' + my + '" width="54" height="35" rx="3" fill="#fff" stroke="#d8d2c6"/>' +
-        '<rect x="' + mx + '" y="' + my + '" width="6" height="35" rx="2" fill="' + (sup ? '#9aa1ab' : HUES[a.type]) + '"/>' +
-        '<path d="M' + (mx + 12) + ',' + (my + 11) + 'h34M' + (mx + 12) + ',' + (my + 19) + 'h28M' + (mx + 12) + ',' + (my + 27) + 'h20" stroke="#c9c2b4" stroke-width="3" stroke-linecap="round"/>' +
-        (sup ? '<path d="M' + (mx + 9) + ',' + (my + 11) + 'h40" stroke="#6b7280" stroke-width="2"/>' : '') + '</g>';
-    });
-    s += '<rect x="' + (bx + 20) + '" y="' + (by + bh + 1) + '" width="70" height="6" rx="3" fill="#aeb5bb"/>';
+    /* Whiteboard (the Global board is drawn on it) + proposal tray desk */
+    var b = WB.b;
+    s += '<g class="zone" tabindex="0" role="button" aria-label="Fly to the Global whiteboard" data-action="view" data-view="global">';
+    s += '<ellipse cx="' + b[0] + '" cy="' + b[1] + '" rx="112" ry="17" fill="rgba(60,40,20,0.16)"/>';
+    s += '<path d="M' + (b[0] - 80) + ',' + b[1] + 'v-50M' + (b[0] + 80) + ',' + b[1] + 'v-50M' + (b[0] - 96) + ',' + (b[1] + 3) + 'h32M' + (b[0] + 64) + ',' + (b[1] + 3) + 'h32" stroke="#8d949b" stroke-width="5" stroke-linecap="round" fill="none"/>';
+    s += '<rect x="' + (b[0] - 62) + '" y="' + (WB.y - 25) + '" width="124" height="22" rx="6" fill="#a0744a"/>';
+    s += '<text x="' + b[0] + '" y="' + (WB.y - 9) + '" text-anchor="middle" font-size="13" font-weight="800" letter-spacing="2.5" fill="#fff8ea">WHITEBOARD</text>';
+    s += '<rect class="hot" x="' + WB.x + '" y="' + WB.y + '" width="' + WB.w + '" height="' + WB.h + '" rx="7" fill="#fcfdfd" stroke="#c3c9ce" stroke-width="6"/>';
+    s += '<rect class="ring" x="' + (WB.x - 7) + '" y="' + (WB.y - 7) + '" width="' + (WB.w + 14) + '" height="' + (WB.h + 14) + '" rx="11" fill="none" stroke="#c4321a" stroke-width="3" stroke-dasharray="8 6"/>';
+    s += '<rect x="' + (WB.x + 20) + '" y="' + (WB.y + WB.h + 1) + '" width="70" height="6" rx="3" fill="#aeb5bb"/>';
     s += '<g stroke="rgba(70,45,20,0.28)" stroke-width="1" stroke-linejoin="round">';
     s += desk(6.7, 4.7, 8.1, 5.5, { bare: true });
     s += box(7.0, 4.82, 0.72, 7.8, 5.38, 0.84, ['#8a6238', '#a97c4f', '#8f6640']);
     s += poly([[7.06, 4.88, 0.85], [7.74, 4.88, 0.85], [7.74, 5.32, 0.85], [7.06, 5.32, 0.85]], state.proposals.length ? '#ffffff' : '#6e4d2b');
     s += '</g>';
-    var t = P(7.4, 5.1, 0.85);
-    var tl = P(7.55, 6.15, 0);
+    var t = P(7.4, 5.1, 0.85), tl = P(7.55, 6.15, 0);
     s += '<text transform="matrix(0.866,0.5,-0.866,0.5,' + tl.join(',') + ')" text-anchor="middle" font-size="15" font-weight="800" letter-spacing="2" fill="rgba(70,45,20,0.55)">PROPOSAL TRAY</text>';
     if (state.proposals.length) {
       s += '<g id="tray-paper" class="' + (popTray ? 'pop' : '') + '"><rect x="' + (t[0] - 15) + '" y="' + (t[1] - 50) + '" width="30" height="38" rx="3" fill="#fff" stroke="#8a7b68" stroke-width="1.6"/>' +
@@ -542,16 +557,7 @@ if (typeof document !== 'undefined') (function () {
     return s + '</svg>';
   }
 
-  function homeHTML() {
-    return '<div class="hq-strip"><div class="hq-title">PRVSM HEADQUARTERS</div><div class="roster">' +
-      '<span class="presence"><i></i>Priya <small>· Backend</small></span>' +
-      '<span class="presence"><i></i>Sam <small>· Frontend</small></span>' +
-      '<span class="presence"><i></i>Translator</span></div></div>' +
-      '<div class="scene-wrap"><div class="scene-fit"><div class="scene" id="scene">' + sceneSVG() + '</div></div></div>' +
-      '<p class="scene-hint">Click a cubicle or the whiteboard to walk in — or press <kbd>1</kbd> <kbd>2</kbd> <kbd>3</kbd></p>';
-  }
-
-  /* ---------- Flat views ---------- */
+  /* ---------- Boards (HTML, living in the world at small scale) ---------- */
   function gotoLink(label, view, el, cls) {
     return '<button class="link ' + (cls || '') + '" data-action="goto" data-view="' + esc(view) + '" data-el="' + esc(el) + '">' + esc(label) + '</button>';
   }
@@ -593,52 +599,61 @@ if (typeof document !== 'undefined') (function () {
       '<p>' + esc(al.text) + '</p>' + gotoLink('View on whiteboard', al.link.view, al.link.el) + '</div>';
   }
 
-  function headHTML(title, sub) {
-    return '<div class="view-head"><button class="btn" data-action="view" data-view="home">← Back to office <kbd>0</kbd></button>' +
-      '<div><h1>' + title + '</h1><p>' + sub + '</p></div></div>';
+  function headHTML(title, sub) { return '<div class="view-head"><h1>' + title + '</h1><p>' + sub + '</p></div>'; }
+
+  function frameHTML(view, inner) {
+    var f = FRAMES[view], k = f.w / FRAME_W;
+    var pos = 'left:' + (f.ax - FRAME_W / 2).toFixed(1) + 'px;' +
+      (f.anchor === 'bottom' ? 'bottom:' + (VB.h - f.ay).toFixed(1) + 'px;transform-origin:50% 100%;' : 'top:' + f.ay.toFixed(1) + 'px;transform-origin:50% 0;');
+    return '<div class="frame ' + f.cls + '" id="frame-' + view + '" data-frame="' + view + '" style="' + pos + 'transform:scale(' + k + ')">' + inner + '</div>';
   }
 
-  function render() {
-    var v = state.view;
-    var html = '';
-    if (v === 'home') {
-      html = homeHTML();
-    } else if (v === 'backend') {
-      html = headHTML('Team Backend', 'The backend cubicle wall — the team\'s own board and working drafts.') +
-        '<div class="cols"><section><h2>Team board</h2><div class="cork"><div class="stack">' + state.boards.backend.map(cardHTML).join('') + '</div></div></section>' +
-        '<section><h2>Working draft</h2><div class="panel clip" id="draft-panel"><h3>Orders API draft</h3>' +
-        '<p class="hint">Click the text to edit.</p>' +
-        '<div class="draft" id="draft" contenteditable="true" spellcheck="false" role="textbox" aria-label="Orders API draft"></div>' +
-        '<button class="btn" data-action="add-currency">Add currency field</button></div></section></div>';
-    } else if (v === 'frontend') {
-      html = headHTML('Team Frontend', 'The frontend cubicle wall — the team\'s own board and incoming alerts.') +
-        '<div class="cols"><section><h2>Team board</h2><div class="cork"><div class="stack">' + state.boards.frontend.map(cardHTML).join('') + '</div></div></section>' +
-        '<div><section><h2>Alerts</h2><div class="stack">' +
-        (state.alerts.length ? state.alerts.map(alertHTML).join('') : '<div class="empty">No alerts.</div>') + '</div></section>' +
-        '<section><h2>Import</h2><div class="panel"><button class="btn" data-action="import">Import Claude export — Sam\'s chat</button>' +
-        (state.imported ? '<p class="note">Distilled artifacts only — raw transcripts are never stored.</p>' : '') +
-        '</div></section></div></div>';
-    } else {
-      html = headHTML('Global', 'The shared whiteboard every team reads from.') +
-        '<section><h2>Main whiteboard</h2><div class="whiteboard" id="wb-frame"><div class="grid">' + state.whiteboard.map(cardHTML).join('') + '</div></div></section>' +
-        '<section><h2>Proposal tray</h2><div class="inbox"><div class="stack">' +
-        (state.proposals.length ? state.proposals.map(proposalHTML).join('') : '<div class="empty">No proposals. Sync to check for changes.</div>') +
-        '</div></div></section>';
-    }
-    var changed = v !== lastView;
-    app.innerHTML = v === 'home' ? html : '<div class="flat' + (changed ? ' enter' : '') + '">' + html + '</div>';
-    if (v === 'home' && changed && lastView !== null) document.getElementById('scene').classList.add('enter');
-    lastView = v;
-    if (v === 'frontend') seenAlerts = state.alerts.length;   /* viewing the alerts clears Sam's bubble */
-    var draft = document.getElementById('draft');
-    if (draft) draft.textContent = state.draft;
+  function boardsHTML() {
+    var backend = headHTML('Team Backend', 'The team\'s own board and working drafts.') +
+      '<div class="cols"><section><h2>Team board</h2><div class="cork"><div class="grid">' + state.boards.backend.map(cardHTML).join('') + '</div></div></section>' +
+      '<section><h2>Working draft</h2><div class="panel clip" id="draft-panel"><h3>Orders API draft</h3>' +
+      '<p class="hint">Click the text to edit.</p>' +
+      '<div class="draft" id="draft" contenteditable="true" spellcheck="false" role="textbox" aria-label="Orders API draft"></div>' +
+      '<button class="btn" data-action="add-currency">Add currency field</button></div></section></div>';
+    var frontend = headHTML('Team Frontend', 'The team\'s own board and incoming alerts.') +
+      '<div class="cols"><section><h2>Team board</h2><div class="cork"><div class="grid">' + state.boards.frontend.map(cardHTML).join('') + '</div></div></section>' +
+      '<div><section><h2>Alerts</h2><div class="stack">' +
+      (state.alerts.length ? state.alerts.map(alertHTML).join('') : '<div class="empty">No alerts.</div>') + '</div></section>' +
+      '<section><h2>Import</h2><div class="panel"><button class="btn" data-action="import">Import Claude export — Sam\'s chat</button>' +
+      (state.imported ? '<p class="note">Distilled artifacts only — raw transcripts are never stored.</p>' : '') +
+      '</div></section></div></div>';
+    var global = '<div class="cols wide"><section><h2>Main whiteboard</h2><div class="whiteboard" id="wb-frame"><div class="grid">' + state.whiteboard.map(cardHTML).join('') + '</div></div></section>' +
+      '<section><h2>Proposal tray</h2><div class="inbox"><div class="stack">' +
+      (state.proposals.length ? state.proposals.map(proposalHTML).join('') : '<div class="empty">No proposals. Sync to check for changes.</div>') +
+      '</div></div></section></div>';
+    return frameHTML('backend', backend) + frameHTML('frontend', frontend) + frameHTML('global', global);
+  }
 
+  /* Tabs, badge, HUD, which board is "in focus" — no world rebuild needed */
+  function syncChrome() {
+    var v = state.view;
+    if (v === 'frontend') {                       /* looking at the alerts clears Sam's bubble */
+      seenAlerts = state.alerts.length;
+      var bub = document.getElementById('sam-bubble');
+      if (bub && bub.parentNode) bub.parentNode.removeChild(bub);
+    }
     var tabs = document.querySelectorAll('.tab');
     for (var i = 0; i < tabs.length; i++) tabs[i].setAttribute('aria-selected', String(tabs[i].getAttribute('data-view') === v));
     var badge = document.getElementById('fe-badge');
     badge.hidden = state.alerts.length === 0;
     badge.textContent = state.alerts.length;
     badge.setAttribute('aria-label', state.alerts.length + ' alerts');
+    document.getElementById('hud-back').hidden = v === 'home';
+    document.getElementById('hint').hidden = v !== 'home';
+    var frames = document.querySelectorAll('.frame');
+    for (var j = 0; j < frames.length; j++) frames[j].classList.toggle('focus', frames[j].getAttribute('data-frame') === v);
+  }
+
+  function render() {
+    if (state.view === 'frontend') seenAlerts = state.alerts.length;
+    world.innerHTML = sceneSVG() + boardsHTML();
+    document.getElementById('draft').textContent = state.draft;
+    syncChrome();
   }
 
   function toast(msg) {
@@ -650,11 +665,10 @@ if (typeof document !== 'undefined') (function () {
     setTimeout(function () { if (t.parentNode) t.parentNode.removeChild(t); }, 3200);
   }
 
-  function pulse(ids, scroll) {
-    (ids || []).forEach(function (id, i) {
+  function pulse(ids) {
+    (ids || []).forEach(function (id) {
       var el = document.getElementById(id);
       if (!el) return;
-      if (scroll && i === 0 && el.scrollIntoView) el.scrollIntoView({ block: 'center' });
       el.classList.remove('pulse');
       void el.offsetWidth;
       el.classList.add('pulse');
@@ -662,71 +676,110 @@ if (typeof document !== 'undefined') (function () {
     });
   }
 
-  function apply(result, scroll) {
-    state = result.state;
-    render();
-    if (result.toast) toast(result.toast);
-    pulse(result.fresh, scroll);
+  /* ---------- Camera ---------- */
+  var cam = { x: 0, y: 0, s: 1 };
+
+  function shotFor(view) {
+    if (view === 'home') return HOME_SHOT;
+    var f = FRAMES[view], k = f.w / FRAME_W, el = document.getElementById('frame-' + view);
+    var h = el.offsetHeight * k;
+    return { x: f.ax - f.w / 2, y: f.anchor === 'bottom' ? f.ay - h : f.ay, w: f.w, h: h, maxS: 1.15 / k, k: k };
+  }
+  function fit(r) {
+    var vw = viewport.clientWidth, vh = viewport.clientHeight, room = vh - HUD_TOP - 12;
+    var s = Math.min(vw * 0.95 / r.w, room * 0.97 / r.h, r.maxS);
+    if (r.k) s = Math.max(s, Math.min(vw * 0.95 / r.w, 0.85 / r.k));   /* boards never land smaller than readable; drag to see the rest */
+    var slack = room - r.h * s;
+    return { s: s, x: (vw - r.w * s) / 2 - r.x * s, y: HUD_TOP + (slack < 0 ? 6 : slack * (r.k ? 0.3 : 0.5)) - r.y * s };
+  }
+  function setCam(c, animate) {
+    world.classList.toggle('fly', !!animate && !reducedMotion());
+    void world.offsetWidth;
+    cam = c;
+    world.style.transform = 'translate(' + c.x.toFixed(2) + 'px,' + c.y.toFixed(2) + 'px) scale(' + c.s.toFixed(4) + ')';
+  }
+  function camMoves(c) { return Math.abs(c.s / cam.s - 1) > 0.01 || Math.abs(c.x - cam.x) > 4 || Math.abs(c.y - cam.y) > 4; }
+  function flyTo(view, animate) { setCam(fit(shotFor(view)), animate); }
+
+  /* Free roaming: keep the viewport centre inside the office, and work out which board (if any) is in focus */
+  function roam(c) {
+    var vw = viewport.clientWidth, vh = viewport.clientHeight;
+    c.x = Math.max(vw / 2 - VB.w * c.s, Math.min(vw / 2, c.x));
+    c.y = Math.max(vh / 2 - VB.h * c.s, Math.min(vh / 2, c.y));
+    setCam(c, false);
+    var cx = (vw / 2 - c.x) / c.s, cy = (vh / 2 - c.y) / c.s, found = 'home';
+    ['backend', 'frontend', 'global'].forEach(function (v) {
+      var r = shotFor(v);
+      if (c.s * r.k >= 0.5 && cx > r.x - 8 && cx < r.x + r.w + 8 && cy > r.y - 8 && cy < r.y + r.h + 8) found = v;
+    });
+    if (found !== state.view) { state = setView(state, found).state; syncChrome(); }
   }
 
-  /* ---------- Navigation: zoom from the office into a wall ---------- */
-  function zoomInto(view, done) {
-    var scene = document.getElementById('scene');
-    if (!scene || reducedMotion()) { done(); return; }
-    var o = ZONE_ORIGIN[view], p = P(o[0], o[1], 0.6);
-    scene.style.transformOrigin = ((p[0] - VB.x) / VB.w * 100).toFixed(1) + '% ' + ((p[1] - VB.y) / VB.h * 100).toFixed(1) + '%';
-    busy = true;
-    void scene.offsetWidth;
-    scene.classList.add('zooming');
-    setTimeout(function () { busy = false; done(); }, 430);
+  function apply(result) {
+    var prev = state.view;
+    state = result.state;
+    render();
+    var target = fit(shotFor(state.view)), flying = camMoves(target) && !reducedMotion();
+    setCam(target, true);
+    if (result.toast) toast(result.toast);
+    if (flying && state.view !== prev) setTimeout(function () { pulse(result.fresh); }, 920);
+    else pulse(result.fresh);
   }
 
   function go(view) {
-    if (view === state.view) return;
-    if (state.view === 'home') zoomInto(view, function () { apply(setView(state, view)); });
+    if (busy) return;
+    if (view === state.view) flyTo(view, true);      /* re-centre after roaming */
     else apply(setView(state, view));
-    if (view === 'home') window.scrollTo(0, 0);
   }
 
   /* ---------- Moment: Sync — the Translator carries a paper to the tray ---------- */
   function runSync() {
     var result = sync(state, new Date().toISOString());
-    if (!result.fresh.length || reducedMotion()) { apply(result, true); return; }
+    if (!result.fresh.length || reducedMotion()) { apply(result); return; }
     busy = true;
-    if (state.view !== 'home') { state = setView(state, 'home').state; render(); window.scrollTo(0, 0); }
-    var tr = document.getElementById('av-translator');
-    void tr.getBoundingClientRect();
-    tr.classList.add('walking');
-    tr.style.transition = 'transform 0.55s ease-in-out';
-    tr.style.transform = translate(POS.translatorBackend);
+    var wasHome = state.view === 'home';
+    if (!wasHome) { state = setView(state, 'home').state; render(); }
+    var shot = fit(wasHome ? HOME_SHOT : WALK_SHOT), wait = camMoves(shot) ? 950 : 30;
+    setCam(shot, true);
     setTimeout(function () {
-      tr.classList.add('carrying');
-      tr.style.transition = 'transform 1.5s ease-in-out';
-      tr.style.transform = translate(POS.translatorIdle);
+      var tr = document.getElementById('av-translator');
+      void tr.getBoundingClientRect();
+      tr.classList.add('walking');
+      tr.style.transition = 'transform 0.5s ease-in-out';
+      tr.style.transform = translate(POS.translatorBackend);
       setTimeout(function () {
-        state = setView(result.state, 'home').state;
-        popTray = true; render(); popTray = false;
-        setTimeout(function () { busy = false; zoomInto("global", function () { apply(result, true); }); }, 800);
-      }, 1550);
-    }, 600);
+        tr.classList.add('carrying');
+        tr.style.transition = 'transform 1.4s ease-in-out';
+        tr.style.transform = translate(POS.translatorIdle);
+        setTimeout(function () {
+          state = setView(result.state, 'home').state;
+          popTray = true; render(); popTray = false;
+          setTimeout(function () { busy = false; apply(result); }, 700);
+        }, 1450);
+      }, 550);
+    }, wait);
   }
 
+  /* ---------- Input ---------- */
   document.addEventListener('click', function (e) {
-    var el = e.target.closest ? e.target.closest('[data-action]') : null;
-    if (!el || busy) return;
+    if (busy || suppressClick || !e.target.closest) return;
+    var frame = e.target.closest('.frame');
+    if (frame && frame.getAttribute('data-frame') !== state.view) { go(frame.getAttribute('data-frame')); return; }
+    var el = e.target.closest('[data-action]');
+    if (!el) return;
     var action = el.getAttribute('data-action');
     var now = new Date().toISOString();
     if (action === 'view') go(el.getAttribute('data-view'));
     else if (action === 'sync') runSync();
-    else if (action === 'reset') { seenAlerts = 0; apply({ state: setView(seedState(), 'home').state, toast: 'Reset to seed state.', fresh: [] }); window.scrollTo(0, 0); }
+    else if (action === 'reset') { seenAlerts = 0; apply({ state: setView(seedState(), 'home').state, toast: 'Reset to seed state.', fresh: [] }); }
     else if (action === 'add-currency') { var r = setDraft(state, CURRENCY_TEXT); r.fresh = ['draft']; apply(r); }
-    else if (action === 'accept') { var ra = accept(state, el.getAttribute('data-id'), now); ra.fresh = ra.fresh.concat(['wb-frame']); apply(ra, true); }
+    else if (action === 'accept') { var ra = accept(state, el.getAttribute('data-id'), now); ra.fresh = ra.fresh.concat(['wb-frame']); apply(ra); }
     else if (action === 'dismiss') apply(dismiss(state, el.getAttribute('data-id')));
     else if (action === 'import') apply(importChat(state));
     else if (action === 'goto') {
       var r2 = setView(state, el.getAttribute('data-view'));
       r2.fresh = [el.getAttribute('data-el')];
-      apply(r2, true);
+      apply(r2);
     }
   });
 
@@ -746,7 +799,46 @@ if (typeof document !== 'undefined') (function () {
     if (views[e.key]) go(views[e.key]);
   });
 
+  /* Scroll = zoom around the cursor */
+  viewport.addEventListener('wheel', function (e) {
+    e.preventDefault();
+    if (busy) return;
+    var box = viewport.getBoundingClientRect(), mx = e.clientX - box.left, my = e.clientY - box.top;
+    var dy = e.deltaMode === 1 ? e.deltaY * 33 : e.deltaY;
+    var s = Math.max(fit(HOME_SHOT).s * 0.7, Math.min(13, cam.s * Math.exp(-dy * 0.0016))), f = s / cam.s;
+    roam({ s: s, x: mx - (mx - cam.x) * f, y: my - (my - cam.y) * f });
+  }, { passive: false });
+
+  /* Drag = pan (a click without movement still counts as a click) */
+  var drag = null;
+  viewport.addEventListener('pointerdown', function (e) {
+    if (busy || e.button !== 0 || !e.target.closest) return;
+    if (e.target.closest('.hud-top, .frame.focus button, .frame.focus [contenteditable]')) return;
+    drag = { id: e.pointerId, sx: e.clientX, sy: e.clientY, cx: cam.x, cy: cam.y, moved: false };
+  });
+  viewport.addEventListener('pointermove', function (e) {
+    if (!drag || e.pointerId !== drag.id) return;
+    var dx = e.clientX - drag.sx, dy = e.clientY - drag.sy;
+    if (!drag.moved) {
+      if (Math.abs(dx) + Math.abs(dy) < 7) return;
+      drag.moved = true;
+      viewport.classList.add('dragging');
+      try { viewport.setPointerCapture(drag.id); } catch (err) {}
+    }
+    roam({ s: cam.s, x: drag.cx + dx, y: drag.cy + dy });
+  });
+  function endDrag() {
+    if (drag && drag.moved) { suppressClick = true; setTimeout(function () { suppressClick = false; }, 60); }
+    drag = null;
+    viewport.classList.remove('dragging');
+  }
+  viewport.addEventListener('pointerup', endDrag);
+  viewport.addEventListener('pointercancel', endDrag);
+
+  window.addEventListener('resize', function () { if (!busy) flyTo(state.view, false); });
+
   render();
+  flyTo('home', false);
 })();
 </script>
 </body>
