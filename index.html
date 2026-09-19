@@ -191,6 +191,9 @@
     box-shadow: 0 6px 12px rgba(70, 40, 10, 0.2); }
   .alert .ids { font-family: var(--mono); font-weight: 700; font-size: 0.9rem; }
   .alert p { margin: 4px 0 8px; }
+  .alert.resolved { background: #eef4e8; border-color: #cfdcc4; border-left-color: var(--status); }
+  .alert.resolved p { color: var(--ink-soft); }
+  .resolved-tag { margin-left: 10px; font-family: var(--sans); font-size: 0.75rem; letter-spacing: 0.05em; text-transform: uppercase; color: #fff; background: var(--status); border-radius: 4px; padding: 2px 8px; }
 
   /* Toast */
   .toasts { position: fixed; left: 50%; bottom: 14px; transform: translateX(-50%); display: grid; gap: 8px; z-index: 20; pointer-events: none; }
@@ -350,10 +353,9 @@ function dismiss(state, id) {
 
 function importChat(state) {
   var s = clone(state);
-  if (s.imported) return { state: s, toast: 'Already imported.', fresh: [] };
   var src = { label: "chat: Sam's Claude chat, Sep 19" };
   var t = '2026-09-19T09:00:00Z';
-  var items = [
+  var items = s.imported ? [] : [
     artifact('DEC-ME-001', 'decision', 'mechanical', [], t, 'accepted', src,
       'Frame material locked to 6061 aluminum', '6061-T6 tube for the main frame: weldable, light and in budget. Locked in.'),
     artifact('INT-ME-001', 'interface', 'mechanical', ['electrical'], t, 'accepted', src,
@@ -363,9 +365,24 @@ function importChat(state) {
     artifact('QST-ME-001', 'question', 'mechanical', ['electrical'], t, 'accepted', src,
       'Reinforce mounts now or after battery decision?', 'Undecided whether to reinforce the pack mounts now or wait for the final battery size; needs Electrical input.')
   ];
+  /* If an alert is open, the chat also holds Sam's answer to it: distil that decision and resolve the alert. */
+  var open = s.alerts.filter(function (al) { return !al.resolvedBy; });
+  if (open.length && !findById(s.boards.mechanical, 'DEC-ME-002')) {
+    var al = open[open.length - 1];
+    var canned = al.text.indexOf('Pack grows 40 mm') === 0;
+    var fix = artifact('DEC-ME-002', 'decision', 'mechanical', ['electrical'], al.created, 'accepted', src,
+      canned ? 'Extend battery bay to 340 mm' : 'Rework battery bay for ' + al.to,
+      canned ? 'Responding to ' + al.to + ': bay lengthens 40 mm to take the 340 mm pack; mounts move along the long axis. Frame CAD v2 in progress.'
+        : 'Responding to ' + al.to + ': battery bay and mounts will be reworked to the new pack envelope. Frame CAD v2 in progress.');
+    fix.responds = al.to;
+    items.push(fix);
+    open.forEach(function (o) { o.resolvedBy = fix.id; });
+  }
+  if (!items.length) return { state: s, toast: 'Already imported.', fresh: [] };
   s.boards.mechanical = s.boards.mechanical.concat(items);
   s.imported = true;
-  return { state: s, toast: 'Imported 4 artifacts.', fresh: items.map(function (a) { return 'card-' + a.id; }) };
+  return { state: s, toast: 'Imported ' + items.length + (items.length === 1 ? ' artifact' : ' artifacts') + (open.length ? ' — alert resolved.' : '.'),
+    fresh: items.map(function (a) { return 'card-' + a.id; }).concat(open.map(function (o) { return o.id; })) };
 }
 
 if (typeof module !== 'undefined' && module.exports) {
@@ -567,6 +584,7 @@ if (typeof document !== 'undefined') (function () {
   function cardHTML(a) {
     var lineage = '';
     if (a.supersededBy) lineage += '<div class="lineage">superseded by ' + gotoLink(a.supersededBy, 'global', 'card-' + a.supersededBy) + '</div>';
+    if (a.responds) lineage += '<div class="lineage">responds to ' + gotoLink(a.responds, 'global', 'card-' + a.responds) + '</div>';
     if (a.supersedes) lineage += '<div class="lineage">supersedes ' + gotoLink(a.supersedes, 'global', 'card-' + a.supersedes) + '</div>';
     var source = a.source.view ? gotoLink(a.source.label, a.source.view, a.source.el) : esc(a.source.label);
     var pill = a.state === 'proposed' ? 'proposed · pending review' : a.state;
@@ -597,8 +615,10 @@ if (typeof document !== 'undefined') (function () {
   }
 
   function alertHTML(al) {
-    return '<div class="alert" id="' + al.id + '"><div class="ids">' + esc(al.from) + ' → ' + esc(al.to) + '</div>' +
-      '<p>' + esc(al.text) + '</p>' + gotoLink('View on whiteboard', al.link.view, al.link.el) + '</div>';
+    return '<div class="alert' + (al.resolvedBy ? ' resolved' : '') + '" id="' + al.id + '"><div class="ids">' + esc(al.from) + ' → ' + esc(al.to) +
+      (al.resolvedBy ? '<span class="resolved-tag">✓ Resolved</span>' : '') + '</div>' +
+      '<p>' + esc(al.text) + '</p>' + gotoLink('View on whiteboard', al.link.view, al.link.el) +
+      (al.resolvedBy ? '<div class="lineage">resolved by ' + gotoLink(al.resolvedBy, 'mechanical', 'card-' + al.resolvedBy) + '</div>' : '') + '</div>';
   }
 
   function headHTML(title, sub) { return '<div class="view-head"><h1>' + title + '</h1><p>' + sub + '</p></div>'; }
@@ -642,9 +662,10 @@ if (typeof document !== 'undefined') (function () {
     var tabs = document.querySelectorAll('.tab');
     for (var i = 0; i < tabs.length; i++) tabs[i].setAttribute('aria-selected', String(tabs[i].getAttribute('data-view') === v));
     var badge = document.getElementById('fe-badge');
-    badge.hidden = state.alerts.length === 0;
-    badge.textContent = state.alerts.length;
-    badge.setAttribute('aria-label', state.alerts.length + ' alerts');
+    var openAlerts = state.alerts.filter(function (al) { return !al.resolvedBy; }).length;
+    badge.hidden = openAlerts === 0;
+    badge.textContent = openAlerts;
+    badge.setAttribute('aria-label', openAlerts + ' open alerts');
     world.setAttribute('data-view', v);
     document.getElementById('hud-back').hidden = v === 'home';
     document.getElementById('hint').hidden = v !== 'home';
